@@ -1,10 +1,3 @@
-# BaseTask
-
-
-
-
-
-
 def main():
     print("Hello from linear-attention!")
 

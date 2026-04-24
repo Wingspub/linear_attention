@@ -2,7 +2,20 @@
 
 该仓库是用于探索线性注意力的内容。
 
+## Usage
 
+1. 依赖安装
+```bash
+uv venv
+uv sync
+```
+
+2. 任务启动
+```bash
+uv run -m task.synthetic_task # 人工合成任务
+```
+
+## Reference
 
 ```bibtex
 @inproceedings{katharopoulos2020transformers,
