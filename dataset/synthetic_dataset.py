@@ -2,7 +2,7 @@ import torch
 from torch.utils.data import IterableDataset
 
 class SyntheticDataset(IterableDataset):
-    '''合成数据'''
+    '''人工合成数据'''
     def __init__(self, TOKEN_num :int, seq_len :int):
         self.TOEKN_num = TOKEN_num
         self.seq_len = seq_len
@@ -11,3 +11,6 @@ class SyntheticDataset(IterableDataset):
         while True:
             seq = torch.randint(0, self.TOEKN_num, size=(self.seq_len,))
             yield seq
+
+
+
