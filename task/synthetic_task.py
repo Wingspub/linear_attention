@@ -31,7 +31,7 @@ optimizer = optim.SGD(model.parameters(), lr=lr)
 loss_func = CrossEntropyLoss()
 
 
-def train(model: Module, seq_data: torch.Tensor, device: torch.cuda.device) -> float:
+def train(model: Module, seq_data: torch.Tensor, device: torch.device) -> float:
     '''模型训练'''
     model.train()
     # source data and target data
