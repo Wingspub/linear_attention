@@ -29,7 +29,8 @@ dataloader = DataLoader(dataset=dataset, batch_size=32, num_workers=2)
 optimizer = optim.SGD(model.parameters(), lr=lr)
 loss_func = CrossEntropyLoss()
 
-def train(model: Module, seq_data: torch.Tensor, device: torch.device) -> float:
+
+def train(model: Module, seq_data: torch.Tensor, seq_len: int, device: torch.device) -> float:
     '''模型训练'''
     model.train()
     # source data and target data
@@ -38,7 +39,7 @@ def train(model: Module, seq_data: torch.Tensor, device: torch.device) -> float:
 
     y_pred = cast(torch.Tensor, model(X))
 
-    loss = cast(torch.Tensor, loss_func(y_pred.reshape(-1,TOKEN_num), Y.reshape(-1)))
+    loss = cast(torch.Tensor, loss_func(y_pred.reshape(-1, TOKEN_num), Y.reshape(-1)))
     loss.backward()
     optimizer.step()
     optimizer.zero_grad()
@@ -46,44 +47,61 @@ def train(model: Module, seq_data: torch.Tensor, device: torch.device) -> float:
     return loss.cpu().item()
 
 
-def eval(modle: Module, seq_data: torch.Tensor, device: torch.device):
-    ...
-
-
 @torch.inference_mode()
-def generate(model: Module, seq_len: int=128) -> torch.Tensor:
+def generate(model: Module, src_seq: torch.Tensor, seq_len: int=128) -> torch.Tensor:
     '''生成字符'''
     model.eval()
-    start_token = torch.tensor([0])
+    src_len = len(src_seq)
+    assert src_len <= seq_len
+
     response = torch.zeros(seq_len+1, dtype=torch.int32)
-    response[0] = start_token
+    response[:src_len] = src_seq
 
     start = time()
-    for i in range(1, seq_len):
+    for i in range(src_len, seq_len):
         input_token = response[:i].detach().clone().cuda()
         output_pred = model(input_token)
         response[i+1] = torch.argmax(output_pred[-1].cpu())
 
-        # print(response)
     end = time()
     rate = seq_len / (end-start)
     print(f"speed:{rate:.2f} tokens/s")
     return response
 
 
+@torch.inference_mode()
+def eval(model: Module, seq_data: torch.Tensor, seq_len: int, device: torch.device) -> float:
+    model.eval()
+
+    input_seq = seq_data[0, :1+seq_len].detach().clone().cuda()
+    res = generate(model=model, src_seq=input_seq, seq_len=(1+seq_len*2))
+
+    # acc
+    target_seq = seq_data[0, 1+seq_len:].detach().clone()
+    hat_seq = res[1+seq_len:].detach().clone()
+    # print(target_seq)
+    # print(hat_seq)
+    acc = torch.sum(target_seq == hat_seq).item()/seq_len
+    # print(acc)
+    return acc
+
 temp_step = 0
 for seq in dataloader:
-    loss = train(model=model, seq_data=seq, device=device)
+    loss = train(model=model, seq_data=seq, seq_len=seq_len, device=device)
 
     if temp_step % print_num == 0: print(f"step:{temp_step+1}, loss:{loss:.6f}")
+
+    if temp_step % 1000 == 0:
+        acc = eval(model=model, seq_data=seq, seq_len=seq_len, device=device)
+        print(f"acc:{acc:.6f}")
 
     temp_step += 1
     if temp_step >= iter_num:
         break
 
-# 字符生成测试
-for _ in range(5):
-    res = generate(model, seq_len=128)
-    print("res:", res)
+# # 字符生成测试
+# for _ in range(5):
+#     res = generate(model, seq_len=128)
+#     print("res:", res)
 
-print("over")
+# print("over")
