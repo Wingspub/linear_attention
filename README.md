@@ -4,7 +4,7 @@
 
 ## Usage
 
-1. 依赖安装
+1. 环境安装
 ```bash
 uv venv
 uv sync
