@@ -3,7 +3,7 @@ from typing import cast
 from torch import optim
 from torch.nn import CrossEntropyLoss, Module
 from torch.utils.data import DataLoader
-from linear_attention.model.base_model import Base, MLP
+from model.base_model import Base, MLP
 from dataset.synthetic_dataset import SyntheticDataset
 from time import time
 
