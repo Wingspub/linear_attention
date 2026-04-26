@@ -10,6 +10,7 @@ class SyntheticDataset(IterableDataset):
     def __iter__(self):
         while True:
             seq = torch.randint(0, self.TOEKN_num, size=(self.seq_len,))
+            # seq = torch.arange(0, self.seq_len) % self.TOEKN_num
             yield seq
 
 
