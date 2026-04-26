@@ -12,7 +12,7 @@ uv sync
 
 2. 任务启动
 ```bash
-uv run -m task.synthetic_task # 人工合成任务
+uv run -m task.synthetic_copy_task # 人工合成任务
 ```
 
 ## Reference
