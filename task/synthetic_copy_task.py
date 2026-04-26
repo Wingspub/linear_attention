@@ -10,8 +10,8 @@ from time import time
 print("this is a synthetic copy task")
 
 # config
-TOKEN_num = 10
-seq_len = 512
+TOKEN_num = 1+10 # 需要有一个token作为<BOS>
+seq_len = 511
 iter_num = 100000
 print_num = 100
 lr = 1e-3
@@ -19,8 +19,8 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 ## model
 dims = 128
-# model = Base(TOKEN_num=TOKEN_num+1, dims=dims).to(device)
-model = MLP(TOKEN_num=TOKEN_num+1, dims=dims).to(device)
+# model = Base(TOKEN_num=TOKEN_num, dims=dims).to(device)
+model = MLP(TOKEN_num=TOKEN_num, dims=dims).to(device)
 
 # init
 dataset = Synthetic4RepetionDataset(TOKEN_num=TOKEN_num, src_seq_len=seq_len)
@@ -38,7 +38,7 @@ def train(model: Module, seq_data: torch.Tensor, device: torch.device) -> float:
 
     y_pred = cast(torch.Tensor, model(X))
 
-    loss = cast(torch.Tensor, loss_func(y_pred.reshape(-1,TOKEN_num+1), Y.reshape(-1)))
+    loss = cast(torch.Tensor, loss_func(y_pred.reshape(-1,TOKEN_num), Y.reshape(-1)))
     loss.backward()
     optimizer.step()
     optimizer.zero_grad()
