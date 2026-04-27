@@ -7,12 +7,13 @@ from model.base_model import MLP, SimpleSequentialModel
 from model.simplest_transformer import SimplestTransformer
 from dataset.synthetic_dataset import Synthetic4RepetionDataset
 from time import time
+from torch.utils.tensorboard import SummaryWriter
 
 print("this is a synthetic copy task")
 
 # config
-TOKEN_num = 1+30 # 需要有一个token作为<BOS>
-seq_len = 127
+TOKEN_num = 1+10 # 需要有一个token作为<BOS>
+seq_len = 31
 iter_num = 100000
 loss_print_num = 100
 eval_num = 1000
@@ -87,13 +88,18 @@ def eval(model: Module, seq_data: torch.Tensor, seq_len: int, device: torch.devi
 
     return acc
 
+# recorad
+writer = SummaryWriter("logs")
+
 temp_step = 0
 for seq in dataloader:
     if temp_step % eval_num == 0:
         acc = eval(model=model, seq_data=seq, seq_len=seq_len, device=device)
         print(f"acc:{acc:.6f}")
+        writer.add_scalar("Train/acc", acc, temp_step)
 
     loss = train(model=model, seq_data=seq, seq_len=seq_len, device=device)
+    writer.add_scalar("Train/loss", loss, temp_step)
 
     if temp_step % loss_print_num == 0: print(f"step:{temp_step+1}, loss:{loss:.6f}")
 
