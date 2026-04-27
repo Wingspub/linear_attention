@@ -2,6 +2,7 @@ from torch import nn
 import torch
 
 class Base(nn.Module):
+    '''基础模型模板'''
     def __init__(self, TOKEN_num: int, dims: int):
         super().__init__()
         self.embeddings = nn.Embedding(TOKEN_num, dims)
@@ -12,8 +13,8 @@ class Base(nn.Module):
         # input_seq -> (batch, seq)
         # output -> (batch, seq, TOEKN_num)
         embeddings = self.embeddings(input_seq)
-        out = self.Linear(embeddings)
-        return out
+        output = self.Linear(embeddings)
+        return output
 
 
 class MLP(nn.Module):

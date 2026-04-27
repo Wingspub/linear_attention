@@ -4,6 +4,7 @@ from torch import optim
 from torch.nn import CrossEntropyLoss, Module
 from torch.utils.data import DataLoader
 from model.base_model import MLP, SimpleSequentialModel
+from model.simplest_transformer import SimplestTransformer
 from dataset.synthetic_dataset import Synthetic4RepetionDataset
 from time import time
 
@@ -20,8 +21,9 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 ## model
 dims = 128
-model = MLP(TOKEN_num=TOKEN_num, dims=dims).to(device)
+# model = MLP(TOKEN_num=TOKEN_num, dims=dims).to(device)
 # model = SimpleSequentialModel(TOKEN_num=TOKEN_num, dims=dims, device=device).to(device)
+model = SimplestTransformer(Token_num=TOKEN_num, layers_num=2, dims=dims, device=device).to(device)
 
 # init
 dataset = Synthetic4RepetionDataset(TOKEN_num=TOKEN_num, src_seq_len=seq_len)
