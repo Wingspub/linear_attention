@@ -63,10 +63,11 @@ class SimpleSequentialModel(nn.Module):
 
 
 class SelfAttention(nn.Module):
-    def __init__(self, TOKEN_num :int, dims :int):
+    def __init__(self, TOKEN_num: int, dims: int, device: torch.device):
         super().__init__()
         self.embeddings = nn.Embedding(TOKEN_num, dims)
         self.dims = dims
+        self.device = device
 
         self.Q_trans = nn.Linear(dims, dims, bias=False)
         self.K_trans = nn.Linear(dims, dims, bias=False)
@@ -83,7 +84,7 @@ class SelfAttention(nn.Module):
         V = self.V_trans(embeddings)
         # print(K.shape)
 
-        A = self.softmax(torch.matmul(Q, K.transpose(-1, -2))/torch.sqrt(torch.tensor(self.dims).cuda()))
+        A = torch.tril(self.softmax(torch.matmul(Q, K.transpose(-1, -2))/torch.sqrt(torch.tensor(self.dims).to(self.device))))
         output = self.output_trans(torch.matmul(A, V))
 
         return output
