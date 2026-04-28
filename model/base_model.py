@@ -40,7 +40,7 @@ class MLP(nn.Module):
         return out
 
 
-class SimpleSequentialModel(nn.Module):
+class SimpleParallelSequentialModel(nn.Module):
     def __init__(self, TOKEN_num: int, dims: int, device: torch.device):
         super().__init__()
         self.device = device
@@ -90,10 +90,30 @@ class SelfAttention(nn.Module):
         return output
 
 
-class RNN_base(nn.Module):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+class SimpleRecurrentSequentialModel(nn.Module):
+    def __init__(self, TOKEN_num: int, dims: int, device: torch.device):
+        super().__init__()
+        self.TOKEN_num = TOKEN_num
+        self.device = device
+        self.dims = dims
 
-    def froward(self, input_seq: torch.Tensor) -> torch.Tensor:
-        ...
+        self.embeddings = nn.Embedding(TOKEN_num, dims)
 
+        self.h_matrix = nn.Linear(dims, dims)
+        self.x_matrix = nn.Linear(dims, dims)
+        self.activate = nn.ReLU()
+
+        self.output_trans = nn.Linear(dims, TOKEN_num)
+
+    def forward(self, input_seq: torch.Tensor) -> torch.Tensor:
+        B, L = input_seq.shape
+        embeddings = self.embeddings(input_seq)
+
+        h0 = torch.zeros((B,self.dims)).to(self.device)
+        output = torch.zeros((B, L, self.TOKEN_num)).to(self.device)
+        for i in range(L):
+            x = embeddings[:, i]
+            h0 = self.activate(self.h_matrix(h0) + self.x_matrix(x))
+            output[:, i] = self.output_trans(h0)
+
+        return output

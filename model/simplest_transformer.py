@@ -2,7 +2,7 @@ import torch
 from torch import nn
 
 
-class SimpleSequentialModel(nn.Module):
+class SimpleParallelSequentialModel(nn.Module):
     def __init__(self,dims: int, device: torch.device):
         super().__init__()
         self.device = device
@@ -35,7 +35,7 @@ class SimplestTransformer(nn.Module):
         self.layers = nn.ModuleList()
 
         for _ in range(layers_num):
-            attention_layer = SimpleSequentialModel(dims, device)
+            attention_layer = SimpleParallelSequentialModel(dims, device)
             self.layers.append(attention_layer)
 
 

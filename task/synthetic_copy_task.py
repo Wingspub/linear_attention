@@ -3,7 +3,7 @@ from typing import cast
 from torch import optim
 from torch.nn import CrossEntropyLoss, Module
 from torch.utils.data import DataLoader
-from model.base_model import SimpleSequentialModel, SelfAttention
+from model.base_model import SimpleParallelSequentialModel, SelfAttention, SimpleRecurrentSequentialModel
 from model.simplest_transformer import SimplestTransformer
 from dataset.synthetic_dataset import Synthetic4RepetionDataset
 from time import time
@@ -22,7 +22,8 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 ## model
 dims = 128
-# model = SimpleSequentialModel(TOKEN_num=TOKEN_num, dims=dims, device=device).to(device)
+# model = SimpleParallelSequentialModel(TOKEN_num=TOKEN_num, dims=dims, device=device).to(device)
+# model = SimpleRecurrentSequentialModel(TOKEN_num=TOKEN_num, dims=5*dims, device=device).to(device)
 model = SimplestTransformer(Token_num=TOKEN_num, layers_num=5, dims=dims, device=device).to(device)
 
 # init
