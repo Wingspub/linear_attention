@@ -3,7 +3,7 @@ from typing import cast
 from torch import optim
 from torch.nn import CrossEntropyLoss, Module
 from torch.utils.data import DataLoader
-from model.base_model import MLP, SimpleSequentialModel
+from model.base_model import MLP, SimpleSequentialModel, SelfAttention
 from model.simplest_transformer import SimplestTransformer
 from dataset.synthetic_dataset import Synthetic4RepetionDataset
 from time import time
@@ -24,7 +24,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 dims = 128
 # model = MLP(TOKEN_num=TOKEN_num, dims=dims).to(device)
 # model = SimpleSequentialModel(TOKEN_num=TOKEN_num, dims=dims, device=device).to(device)
-model = SimplestTransformer(Token_num=TOKEN_num, layers_num=2, dims=dims, device=device).to(device)
+model = SimplestTransformer(Token_num=TOKEN_num, layers_num=5, dims=dims, device=device).to(device)
 
 # init
 dataset = Synthetic4RepetionDataset(TOKEN_num=TOKEN_num, src_seq_len=seq_len)
@@ -58,7 +58,7 @@ def generate(model: Module, src_seq: torch.Tensor, seq_len: int, device: torch.d
     batch, src_len = src_seq.shape
     assert src_len <= seq_len
 
-    response = torch.zeros((batch, seq_len+1), dtype=torch.int32)
+    response = torch.zeros((batch, seq_len), dtype=torch.int32)
     response[:, :src_len] = src_seq
 
 
@@ -66,7 +66,7 @@ def generate(model: Module, src_seq: torch.Tensor, seq_len: int, device: torch.d
     for i in range(src_len, seq_len):
         input_token = response[:, :i].detach().clone().to(device)
         output_pred = model(input_token)
-        response[:, i+1] = torch.argmax(output_pred[:,-1].cpu(), dim=-1)
+        response[:, i] = torch.argmax(output_pred[:,-1].cpu(), dim=-1)
 
     end = time()
     rate = seq_len / (end-start)
@@ -78,12 +78,12 @@ def generate(model: Module, src_seq: torch.Tensor, seq_len: int, device: torch.d
 def eval(model: Module, seq_data: torch.Tensor, seq_len: int, device: torch.device) -> float:
     model.eval()
     batch = seq_data.shape[0]
-    input_seq = seq_data[:, :1+seq_len].detach().clone().to(device)
-    res = generate(model=model, src_seq=input_seq, seq_len=(1+seq_len*2), device=device)
+    input_seq = seq_data[:, :1+seq_len+1].detach().clone().to(device)
+    res = generate(model=model, src_seq=input_seq, seq_len=(1+seq_len)*2, device=device)
 
     # acc
-    target_seq = seq_data[:, 1+seq_len:].detach().clone()
-    hat_seq = res[:, 1+seq_len:].detach().clone()
+    target_seq = seq_data[:, 1+seq_len+1:].detach().clone()
+    hat_seq = res[:, 1+seq_len+1:].detach().clone()
     acc = torch.sum(target_seq == hat_seq).item()/seq_len/batch
 
     return acc
