@@ -17,4 +17,6 @@
 
 ## 3 文本生成任务
 
+数据集[主页](http://prize.hutter1.net/): [enwik8](http://mattmahoney.net/dc/enwik8.zip)
 
+给定文本数据集enwik8，将其拆分成训练集和验证集，利用next token prediction任务拟合训练数据，并在验证集上计算拟合损失值。最后通过生成观察生成效果。
