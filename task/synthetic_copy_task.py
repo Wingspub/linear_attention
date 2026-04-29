@@ -88,7 +88,7 @@ def eval(model: Module, seq_data: torch.Tensor, seq_len: int, device: torch.devi
 
     return acc
 
-# recorad
+# record
 writer = SummaryWriter("logs")
 
 temp_step = 0
