@@ -18,7 +18,7 @@ iter_num = 100000
 loss_print_num = 100
 eval_num = 1000
 lr = 1e-3
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 ## model
 dims = 128
