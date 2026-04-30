@@ -13,9 +13,20 @@ uv sync
 2. 任务启动
 ```bash
 uv run -m task.synthetic_copy_task # 人工合成任务
+uv run -m task.enwik8_task         # 文本拟合任务
 ```
 
 ## Reference
+
+```bibtex
+@article{vaswani2017attention,
+  title={Attention is all you need},
+  author={Vaswani, Ashish and Shazeer, Noam and Parmar, Niki and Uszkoreit, Jakob and Jones, Llion and Gomez, Aidan N and Kaiser, {\L}ukasz and Polosukhin, Illia},
+  journal={Advances in neural information processing systems},
+  volume={30},
+  year={2017}
+}
+```
 
 ```bibtex
 @inproceedings{katharopoulos2020transformers,
