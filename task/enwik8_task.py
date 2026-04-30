@@ -5,6 +5,7 @@ from torch import optim
 from time import time
 from dataset.enwik8_dataset import Enwik8Dataset
 from model.simplest_transformer import SimplestTransformer
+from model.original_transformer import OriginalTransformer
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
@@ -37,8 +38,8 @@ def enwik8_read(train_spilt_rate: float) -> Tuple[torch.Tensor, torch.Tensor, in
 
 # config
 train_vaild_spilt_rate = 0.9
-SEQ_LEN = 512
-GEN_LEN = 512
+SEQ_LEN = 256
+GEN_LEN = 256
 iter_num = 100000
 loss_print_num = 100
 eval_num = 1000
@@ -46,7 +47,7 @@ eval_num = 1000
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device('cpu')
 
 ## model
-dims = 128
+dims = 512
 lr = 1e-3
 
 # init
@@ -55,12 +56,13 @@ train_text, valid_text, token_num = enwik8_read(train_vaild_spilt_rate)
 
 train_dataset = Enwik8Dataset(train_text, seq_len=SEQ_LEN)
 valid_dataset = Enwik8Dataset(valid_text, seq_len=SEQ_LEN)
-train_dataloader = DataLoader(train_dataset, batch_size=32, num_workers=2)
+train_dataloader = DataLoader(train_dataset, batch_size=64, num_workers=2)
 valid_dataset = DataLoader(valid_dataset, batch_size=32, num_workers=2)
 
 # model
-model = SimplestTransformer(Token_num=token_num, layers_num=5, dims=dims, device=device).to(device)
-optimizer = optim.SGD(model.parameters(), lr=lr)
+# model = SimplestTransformer(Token_num=token_num, layers_num=5, dims=dims, device=device).to(device)
+model = OriginalTransformer(token_num=token_num, block_num=6, dims=dims, heads=8).to(device)
+optimizer = optim.Adam(model.parameters(), lr=lr)
 loss_func = CrossEntropyLoss()
 
 

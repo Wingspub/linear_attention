@@ -27,7 +27,6 @@ class FFN(nn.Module):
         return self.layer(input_embs)
 
 
-
 class SelfAttention(nn.Module):
     def __init__(self, dims: int):
         super().__init__()
@@ -63,16 +62,51 @@ class SelfAttention(nn.Module):
         return output
 
 
-
 class MultiHeadAttention(nn.Module):
-    ...
+    def __init__(self, dims: int, heads: int):
+        super().__init__()
+        self.dims = dims
+        self.heads = heads
+        self.heads_dims = dims // heads
+
+        assert dims == self.heads_dims * heads
+
+        self.Q_trans = nn.Linear(dims, dims, bias=False)
+        self.K_trans = nn.Linear(dims, dims, bias=False)
+        self.V_trans = nn.Linear(dims, dims, bias=False)
+
+        self.softmax = nn.Softmax(-1)
+
+
+    def forward(self, input_seq_embs: torch.Tensor, is_causal: bool=True) -> torch.Tensor:
+        B, L, d = input_seq_embs.shape
+
+        W_Q = cast(torch.Tensor, self.Q_trans(input_seq_embs)).reshape(B, L, self.heads, self.heads_dims)
+        W_K = cast(torch.Tensor, self.K_trans(input_seq_embs)).reshape(B, L, self.heads, self.heads_dims)
+        W_V = cast(torch.Tensor, self.V_trans(input_seq_embs)).reshape(B, L, self.heads, self.heads_dims)
+
+        # A: score matrix
+        A = torch.matmul(W_Q, W_K.transpose(-1, -2))
+        if is_causal:
+            mask_index = ~torch.tril(torch.ones_like(A, dtype=torch.bool))
+            mask = torch.zeros_like(A)
+            mask[mask_index] = torch.inf
+            A = self.softmax(A - mask)
+
+        else:
+            A = self.softmax(A)
+
+        # output
+        output = torch.matmul(A, W_V).reshape(B, L, d)
+        return output
 
 
 class TransformerBlock(nn.Module):
-    def __init__(self, dims: int):
+    def __init__(self, dims: int, heads: int=8):
         super().__init__()
 
-        self.attention = SelfAttention(dims=dims)
+        # self.attention = SelfAttention(dims=dims)
+        self.attention = MultiHeadAttention(dims=dims, heads=heads)
         self.LN1 = nn.LayerNorm(normalized_shape=dims)
         self.FFN = nn.Sequential(
             nn.Linear(dims, dims),
@@ -98,7 +132,7 @@ class TransformerBlock(nn.Module):
 
 
 class OriginalTransformer(nn.Module):
-    def __init__(self, token_num: int, block_num: int, dims: int):
+    def __init__(self, token_num: int, block_num: int, dims: int, heads: int=8):
         super().__init__()
         self.block_num = block_num
         self.dims = dims
@@ -108,7 +142,7 @@ class OriginalTransformer(nn.Module):
         # TransformerBlock
         self.layer_block = nn.ModuleList()
         for _ in range(block_num):
-            transformerBlock = TransformerBlock(dims=dims)
+            transformerBlock = TransformerBlock(dims=dims, heads=heads)
             self.layer_block.append(transformerBlock)
 
         self.output_trans = nn.Linear(dims, token_num)
