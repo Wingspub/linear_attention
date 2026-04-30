@@ -22,9 +22,9 @@ device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cp
 
 ## model
 dims = 128
-# model = SimpleParallelSequentialModel(TOKEN_num=TOKEN_num, dims=dims, device=device).to(device)
+# model = SimpleParallelSequentialModel(TOKEN_num=TOKEN_num, dims=dims).to(device)
 # model = SimpleRecurrentSequentialModel(TOKEN_num=TOKEN_num, dims=5*dims, device=device).to(device)
-model = SimplestTransformer(Token_num=TOKEN_num, layers_num=5, dims=dims, device=device).to(device)
+model = SimplestTransformer(Token_num=TOKEN_num, layers_num=5, dims=dims).to(device)
 
 # init
 dataset = Synthetic4RepetionDataset(TOKEN_num=TOKEN_num, src_seq_len=seq_len)

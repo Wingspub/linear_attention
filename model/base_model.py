@@ -1,3 +1,4 @@
+from typing import cast
 from torch import nn
 import torch
 
@@ -41,33 +42,30 @@ class MLP(nn.Module):
 
 
 class SimpleParallelSequentialModel(nn.Module):
-    def __init__(self, TOKEN_num: int, dims: int, device: torch.device):
+    def __init__(self, TOKEN_num: int, dims: int):
         super().__init__()
-        self.device = device
         self.embeddings = nn.Embedding(TOKEN_num, dims)
         self.V_trans = nn.Linear(dims, dims, bias=False)
-
         self.output_trans = nn.Linear(dims, TOKEN_num)
 
 
     def forward(self, input_seq: torch.Tensor) -> torch.Tensor:
         L = input_seq.shape[1]
         embeddings = self.embeddings(input_seq)
-        V = self.V_trans(embeddings)
+        V = cast(torch.Tensor, self.V_trans(embeddings))
 
         # casual matrix
         A = torch.tril(torch.ones(L, L)) / torch.arange(1, L+1).unsqueeze(1)
-        output = self.output_trans(torch.matmul(A.to(self.device), V))
+        output = self.output_trans(torch.matmul(A.to(V.device), V))
 
         return output
 
 
 class SelfAttention(nn.Module):
-    def __init__(self, TOKEN_num: int, dims: int, device: torch.device):
+    def __init__(self, TOKEN_num: int, dims: int):
         super().__init__()
         self.embeddings = nn.Embedding(TOKEN_num, dims)
         self.dims = dims
-        self.device = device
 
         self.Q_trans = nn.Linear(dims, dims, bias=False)
         self.K_trans = nn.Linear(dims, dims, bias=False)
@@ -84,7 +82,7 @@ class SelfAttention(nn.Module):
         V = self.V_trans(embeddings)
         # print(K.shape)
 
-        A = torch.tril(self.softmax(torch.matmul(Q, K.transpose(-1, -2))/torch.sqrt(torch.tensor(self.dims).to(self.device))))
+        A = torch.tril(self.softmax(torch.matmul(Q, K.transpose(-1, -2))/torch.sqrt(torch.tensor(self.dims).to(Q.device))))
         output = self.output_trans(torch.matmul(A, V))
 
         return output
