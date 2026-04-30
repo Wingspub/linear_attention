@@ -5,6 +5,7 @@ from torch.nn import CrossEntropyLoss, Module
 from torch.utils.data import DataLoader
 from model.base_model import SimpleParallelSequentialModel, SelfAttention, SimpleRecurrentSequentialModel
 from model.simplest_transformer import SimplestTransformer
+from model.original_transformer import OriginalTransformer
 from dataset.synthetic_dataset import Synthetic4RepetionDataset
 from time import time
 from torch.utils.tensorboard import SummaryWriter
@@ -24,7 +25,8 @@ device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cp
 dims = 128
 # model = SimpleParallelSequentialModel(TOKEN_num=TOKEN_num, dims=dims).to(device)
 # model = SimpleRecurrentSequentialModel(TOKEN_num=TOKEN_num, dims=5*dims, device=device).to(device)
-model = SimplestTransformer(Token_num=TOKEN_num, layers_num=5, dims=dims).to(device)
+# model = SimplestTransformer(Token_num=TOKEN_num, layers_num=5, dims=dims).to(device)
+model = OriginalTransformer(token_num=TOKEN_num, block_num=3, dims=dims).to(device)
 
 # init
 dataset = Synthetic4RepetionDataset(TOKEN_num=TOKEN_num, src_seq_len=seq_len)
