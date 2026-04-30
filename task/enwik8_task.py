@@ -38,7 +38,7 @@ def enwik8_read(train_spilt_rate: float) -> Tuple[torch.Tensor, torch.Tensor, in
 
 # config
 train_vaild_spilt_rate = 0.9
-SEQ_LEN = 256
+SEQ_LEN = 2048
 GEN_LEN = 256
 iter_num = 100000
 loss_print_num = 100
@@ -56,12 +56,14 @@ train_text, valid_text, token_num = enwik8_read(train_vaild_spilt_rate)
 
 train_dataset = Enwik8Dataset(train_text, seq_len=SEQ_LEN)
 valid_dataset = Enwik8Dataset(valid_text, seq_len=SEQ_LEN)
-train_dataloader = DataLoader(train_dataset, batch_size=64, num_workers=2)
+train_dataloader = DataLoader(train_dataset, batch_size=32, num_workers=2)
 valid_dataset = DataLoader(valid_dataset, batch_size=32, num_workers=2)
 
 # model
 # model = SimplestTransformer(Token_num=token_num, layers_num=5, dims=dims, device=device).to(device)
-model = OriginalTransformer(token_num=token_num, block_num=6, dims=dims, heads=8).to(device)
+model = OriginalTransformer(token_num=token_num, block_num=4, dims=dims, heads=8).to(device)
+torch.set_float32_matmul_precision('high')
+model = torch.compile(model)
 optimizer = optim.Adam(model.parameters(), lr=lr)
 loss_func = CrossEntropyLoss()
 
@@ -77,6 +79,7 @@ def train(model: Module, seq_data: torch.Tensor, device: torch.device) -> float:
 
     loss = cast(torch.Tensor, loss_func(y_pred.reshape(-1, token_num), Y.reshape(-1)))
     loss.backward()
+    torch.nn.utils.clip_grad_norm_(model.parameters(), 0.5)
     optimizer.step()
     optimizer.zero_grad()
 
@@ -99,6 +102,7 @@ def generate(model: Module, src_seq: torch.Tensor, seq_len: int, device: torch.d
         input_token = response[:, :i].detach().clone().to(device)
         output_pred = model(input_token)
         response[:, i] = torch.argmax(output_pred[:,-1].cpu(), dim=-1)
+        del input_token, output_pred
 
     end = time()
     rate = seq_len / (end-start)

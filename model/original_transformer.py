@@ -107,12 +107,14 @@ class TransformerBlock(nn.Module):
 
         # self.attention = SelfAttention(dims=dims)
         self.attention = MultiHeadAttention(dims=dims, heads=heads)
+        self.dropout1 = nn.Dropout(p=0.3)
         self.LN1 = nn.LayerNorm(normalized_shape=dims)
         self.FFN = nn.Sequential(
             nn.Linear(dims, dims),
             nn.ReLU(),
             nn.Linear(dims, dims)
         )
+        self.dropout2 = nn.Dropout(p=0.3)
         self.LN2 = nn.LayerNorm(normalized_shape=dims)
 
 
@@ -121,12 +123,12 @@ class TransformerBlock(nn.Module):
         # Attention
         embs = self.attention(input_seq_embs, is_causal=True)
         embs = self.LN1(embs)
-        input_seq_embs = input_seq_embs + embs
+        input_seq_embs = input_seq_embs + self.dropout1(embs)
 
         # FFN
         embs = self.FFN(input_seq_embs)
         embs = self.LN2(embs)
-        output_embs = input_seq_embs + embs
+        output_embs = input_seq_embs + self.dropout2(embs)
 
         return output_embs
 
