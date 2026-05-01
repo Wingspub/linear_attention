@@ -29,6 +29,16 @@ uv run -m task.enwik8_task         # 文本拟合任务
 ```
 
 ```bibtex
+@inproceedings{shen2021efficient,
+  title={Efficient attention: Attention with linear complexities},
+  author={Shen, Zhuoran and Zhang, Mingyuan and Zhao, Haiyu and Yi, Shuai and Li, Hongsheng},
+  booktitle={Proceedings of the IEEE/CVF winter conference on applications of computer vision},
+  pages={3531--3539},
+  year={2021}
+}
+```
+
+```bibtex
 @inproceedings{katharopoulos2020transformers,
   title={Transformers are rnns: Fast autoregressive transformers with linear attention},
   author={Katharopoulos, Angelos and Vyas, Apoorv and Pappas, Nikolaos and Fleuret, Fran{\c{c}}ois},

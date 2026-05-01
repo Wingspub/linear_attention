@@ -3,7 +3,7 @@ from typing import cast
 from torch import optim
 from torch.nn import CrossEntropyLoss, Module
 from torch.utils.data import DataLoader
-from model.base_model import SimpleParallelSequentialModel, SelfAttention, SimpleRecurrentSequentialModel
+from model.base_model import SimpleParallelSequentialModel, SimpleRecurrentSequentialModel
 from model.simplest_transformer import SimplestTransformer
 from model.original_transformer import OriginalTransformer
 from dataset.synthetic_dataset import Synthetic4RepetionDataset
