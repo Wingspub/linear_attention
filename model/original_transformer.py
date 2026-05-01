@@ -71,9 +71,9 @@ class MultiHeadAttention(nn.Module):
 
         assert dims == self.heads_dims * heads
 
-        self.Q_trans = nn.Linear(dims, dims, bias=False)
-        self.K_trans = nn.Linear(dims, dims, bias=False)
-        self.V_trans = nn.Linear(dims, dims, bias=False)
+        self.W_Q = nn.Linear(dims, dims, bias=False)
+        self.W_K = nn.Linear(dims, dims, bias=False)
+        self.W_V = nn.Linear(dims, dims, bias=False)
 
         self.softmax = nn.Softmax(-1)
 
@@ -81,12 +81,12 @@ class MultiHeadAttention(nn.Module):
     def forward(self, input_seq_embs: torch.Tensor, is_causal: bool=True) -> torch.Tensor:
         B, L, d = input_seq_embs.shape
 
-        W_Q = cast(torch.Tensor, self.Q_trans(input_seq_embs)).reshape(B, L, self.heads, self.heads_dims)
-        W_K = cast(torch.Tensor, self.K_trans(input_seq_embs)).reshape(B, L, self.heads, self.heads_dims)
-        W_V = cast(torch.Tensor, self.V_trans(input_seq_embs)).reshape(B, L, self.heads, self.heads_dims)
+        Q = cast(torch.Tensor, self.W_Q(input_seq_embs)).reshape(B, L, self.heads, self.heads_dims)
+        K = cast(torch.Tensor, self.W_K(input_seq_embs)).reshape(B, L, self.heads, self.heads_dims)
+        V = cast(torch.Tensor, self.W_V(input_seq_embs)).reshape(B, L, self.heads, self.heads_dims)
 
         # A: score matrix
-        A = torch.matmul(W_Q, W_K.transpose(-1, -2))
+        A = torch.matmul(Q, K.transpose(-1, -2))
         if is_causal:
             mask_index = ~torch.tril(torch.ones_like(A, dtype=torch.bool))
             mask = torch.zeros_like(A)
@@ -97,7 +97,7 @@ class MultiHeadAttention(nn.Module):
             A = self.softmax(A)
 
         # output
-        output = torch.matmul(A, W_V).reshape(B, L, d)
+        output = torch.matmul(A, V).reshape(B, L, d)
         return output
 
 

@@ -45,14 +45,14 @@ class SimpleParallelSequentialModel(nn.Module):
     def __init__(self, TOKEN_num: int, dims: int):
         super().__init__()
         self.embeddings = nn.Embedding(TOKEN_num, dims)
-        self.V_trans = nn.Linear(dims, dims, bias=False)
+        self.W_V = nn.Linear(dims, dims, bias=False)
         self.output_trans = nn.Linear(dims, TOKEN_num)
 
 
     def forward(self, input_seq: torch.Tensor) -> torch.Tensor:
         L = input_seq.shape[1]
         embeddings = self.embeddings(input_seq)
-        V = cast(torch.Tensor, self.V_trans(embeddings))
+        V = cast(torch.Tensor, self.W_V(embeddings))
 
         # casual matrix
         A = torch.tril(torch.ones(L, L)) / torch.arange(1, L+1).unsqueeze(1)
@@ -67,9 +67,9 @@ class SelfAttention(nn.Module):
         self.embeddings = nn.Embedding(TOKEN_num, dims)
         self.dims = dims
 
-        self.Q_trans = nn.Linear(dims, dims, bias=False)
-        self.K_trans = nn.Linear(dims, dims, bias=False)
-        self.V_trans = nn.Linear(dims, dims, bias=False)
+        self.W_Q = nn.Linear(dims, dims, bias=False)
+        self.W_K = nn.Linear(dims, dims, bias=False)
+        self.WV = nn.Linear(dims, dims, bias=False)
         self.softmax = nn.Softmax(dim=-1)
 
         self.output_trans = nn.Linear(dims, TOKEN_num)
@@ -77,9 +77,9 @@ class SelfAttention(nn.Module):
 
     def forward(self, input_seq: torch.Tensor) -> torch.Tensor:
         embeddings = self.embeddings(input_seq)
-        Q = self.Q_trans(embeddings)
-        K = self.K_trans(embeddings)
-        V = self.V_trans(embeddings)
+        Q = self.W_Q(embeddings)
+        K = self.W_K(embeddings)
+        V = self.W_V(embeddings)
         # print(K.shape)
 
         A = torch.tril(self.softmax(torch.matmul(Q, K.transpose(-1, -2))/torch.sqrt(torch.tensor(self.dims).to(Q.device))))
