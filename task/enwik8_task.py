@@ -38,7 +38,7 @@ def enwik8_read(train_spilt_rate: float) -> Tuple[torch.Tensor, torch.Tensor, in
 
 # config
 train_vaild_spilt_rate = 0.9
-SEQ_LEN = 2048
+SEQ_LEN = 4096
 GEN_LEN = 256
 iter_num = 100000
 loss_print_num = 100
@@ -93,16 +93,15 @@ def generate(model: Module, src_seq: torch.Tensor, seq_len: int, device: torch.d
     batch, src_len = src_seq.shape
     assert src_len <= seq_len
 
-    response = torch.zeros((batch, seq_len), dtype=torch.int32)
+    response = torch.zeros((batch, seq_len), dtype=torch.int32).to(device)
     response[:, :src_len] = src_seq
 
 
     start = time()
     for i in range(src_len, seq_len):
-        input_token = response[:, :i].detach().clone().to(device)
-        output_pred = model(input_token)
-        response[:, i] = torch.argmax(output_pred[:,-1].cpu(), dim=-1)
-        del input_token, output_pred
+        output_pred = model(response[:, :i])
+        response[:, i] = torch.argmax(output_pred[:,-1], dim=-1)
+        del output_pred
 
     end = time()
     rate = seq_len / (end-start)
