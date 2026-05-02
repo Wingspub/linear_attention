@@ -38,8 +38,8 @@ def enwik8_read(train_spilt_rate: float) -> Tuple[torch.Tensor, torch.Tensor, in
 
 # config
 train_vaild_spilt_rate = 0.9
-SEQ_LEN = 1024
-GEN_LEN = 256
+SEQ_LEN = 768
+GEN_LEN = 128
 iter_num = 100000
 loss_print_num = 100
 eval_num = 1000
@@ -48,7 +48,7 @@ device = torch.device("cuda") if torch.cuda.is_available() else torch.device('cp
 
 ## model
 dims = 512
-lr = 1e-3
+lr = 5e-4
 
 # init
 tokenizer = Enwik8Tokenizer()
@@ -56,12 +56,12 @@ train_text, valid_text, token_num = enwik8_read(train_vaild_spilt_rate)
 
 train_dataset = Enwik8Dataset(train_text, seq_len=SEQ_LEN)
 valid_dataset = Enwik8Dataset(valid_text, seq_len=SEQ_LEN)
-train_dataloader = DataLoader(train_dataset, batch_size=32, num_workers=2)
-valid_dataset = DataLoader(valid_dataset, batch_size=32, num_workers=2)
+train_dataloader = DataLoader(train_dataset, batch_size=8, num_workers=2)
+valid_dataset = DataLoader(valid_dataset, batch_size=8, num_workers=2)
 
 # model
 # model = SimplestTransformer(Token_num=token_num, layers_num=5, dims=dims, device=device).to(device)
-model = OriginalTransformer(token_num=token_num, block_num=4, dims=dims, heads=8).to(device)
+model = OriginalTransformer(token_num=token_num, block_num=6, dims=dims, heads=8).to(device)
 torch.set_float32_matmul_precision('high')
 model = torch.compile(model)
 optimizer = optim.Adam(model.parameters(), lr=lr)
