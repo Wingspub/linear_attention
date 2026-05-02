@@ -32,32 +32,35 @@ class SelfAttention(nn.Module):
         super().__init__()
         self.dims = dims
 
-        self.Q_trans = nn.Linear(dims, dims, bias=False)
-        self.K_trans = nn.Linear(dims, dims, bias=False)
-        self.V_trans = nn.Linear(dims, dims, bias=False)
+        self.W_Q = nn.Linear(dims, dims, bias=False)
+        self.W_K = nn.Linear(dims, dims, bias=False)
+        self.W_V = nn.Linear(dims, dims, bias=False)
+
+        self.score_dropout = nn.Dropout(p=0.1)
+        self.residual_dropout = nn.Dropout(p=0.1)
 
         self.softmax = nn.Softmax(dim=-1)
+        # output_tran
+        self.output_project = nn.Linear(dims, dims)
 
 
     def forward(self, input_seq_embs: torch.Tensor, is_causal: bool=True) -> torch.Tensor:
 
-        W_Q = cast(torch.Tensor, self.Q_trans(input_seq_embs))
-        W_K = cast(torch.Tensor, self.K_trans(input_seq_embs))
-        W_V = cast(torch.Tensor, self.V_trans(input_seq_embs))
+        Q = cast(torch.Tensor, self.W_Q(input_seq_embs))
+        K = cast(torch.Tensor, self.W_K(input_seq_embs))
+        V = cast(torch.Tensor, self.W_V(input_seq_embs))
 
         # A: score matrix
-        A = torch.matmul(W_Q, W_K.transpose(-1, -2))
+        A = torch.matmul(Q, K.transpose(-1, -2))
         if is_causal:
-            mask_index = ~torch.tril(torch.ones_like(A, dtype=torch.bool))
-            mask = torch.zeros_like(A)
-            mask[mask_index] = torch.inf
-            A = self.softmax(A - mask)
-
+            mask = torch.log(torch.tril(torch.ones_like(A, dtype=torch.bool)))
+            A = self.softmax(A + mask)
         else:
             A = self.softmax(A)
 
         # output
-        output = torch.matmul(A, W_V)
+        output = torch.matmul(A, V)
+        output = self.residual_dropout(self.output_project(output))
 
         return output
 
@@ -75,7 +78,12 @@ class MultiHeadAttention(nn.Module):
         self.W_K = nn.Linear(dims, dims, bias=False)
         self.W_V = nn.Linear(dims, dims, bias=False)
 
+        self.score_dropout = nn.Dropout(p=0.1)
+        self.residual_dropout = nn.Dropout(p=0.1)
+
         self.softmax = nn.Softmax(-1)
+        # output_tran
+        self.output_project = nn.Linear(dims, dims)
 
 
     def forward(self, input_seq_embs: torch.Tensor, is_causal: bool=True) -> torch.Tensor:
@@ -86,18 +94,21 @@ class MultiHeadAttention(nn.Module):
         V = cast(torch.Tensor, self.W_V(input_seq_embs)).reshape(B, L, self.heads, self.heads_dims)
 
         # A: score matrix
+        ## dropout
         A = torch.matmul(Q, K.transpose(-1, -2))
         if is_causal:
-            mask_index = ~torch.tril(torch.ones_like(A, dtype=torch.bool))
-            mask = torch.zeros_like(A)
-            mask[mask_index] = torch.inf
-            A = self.softmax(A - mask)
+            mask = torch.log(torch.tril(torch.ones_like(A, dtype=torch.bool)))
+            A = self.softmax(A + mask)
 
         else:
             A = self.softmax(A)
 
         # output
-        output = torch.matmul(A, V).reshape(B, L, d)
+        output = torch.matmul(self.score_dropout(A), V).reshape(B, L, d)
+        ## Linear
+        ## dropout
+        output = self.residual_dropout(self.output_project(output))
+
         return output
 
 
@@ -107,15 +118,13 @@ class TransformerBlock(nn.Module):
 
         # self.attention = SelfAttention(dims=dims)
         self.attention = MultiHeadAttention(dims=dims, heads=heads)
-        self.dropout1 = nn.Dropout(p=0.3)
-        self.LN1 = nn.LayerNorm(normalized_shape=dims)
+        self.LN1 = nn.LayerNorm(dims)
         self.FFN = nn.Sequential(
             nn.Linear(dims, dims),
             nn.ReLU(),
             nn.Linear(dims, dims)
         )
-        self.dropout2 = nn.Dropout(p=0.3)
-        self.LN2 = nn.LayerNorm(normalized_shape=dims)
+        self.LN2 = nn.LayerNorm(dims)
 
 
     def forward(self, input_seq_embs: torch.Tensor) -> torch.Tensor:
@@ -123,12 +132,12 @@ class TransformerBlock(nn.Module):
         # Attention
         embs = self.attention(input_seq_embs, is_causal=True)
         embs = self.LN1(embs)
-        input_seq_embs = input_seq_embs + self.dropout1(embs)
+        input_seq_embs = input_seq_embs + embs
 
         # FFN
         embs = self.FFN(input_seq_embs)
         embs = self.LN2(embs)
-        output_embs = input_seq_embs + self.dropout2(embs)
+        output_embs = input_seq_embs + embs
 
         return output_embs
 
@@ -152,7 +161,7 @@ class OriginalTransformer(nn.Module):
 
     def position_vector(self, seq_len: int) -> torch.Tensor:
         position_index = torch.arange(1, 1+seq_len).unsqueeze(1)
-        dim_index = 10000 **(torch.arange(1, 1+self.dims).unsqueeze(0)/self.dims)
+        dim_index = 10000 ** (torch.arange(1, 1+self.dims).unsqueeze(0)/self.dims)
         position_matrix = position_index/dim_index
 
         # 偶数为cos，奇数为sin
