@@ -38,7 +38,7 @@ def enwik8_read(train_spilt_rate: float) -> Tuple[torch.Tensor, torch.Tensor, in
 
 # config
 train_vaild_spilt_rate = 0.9
-SEQ_LEN = 4096
+SEQ_LEN = 1024
 GEN_LEN = 256
 iter_num = 100000
 loss_print_num = 100

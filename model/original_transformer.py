@@ -59,7 +59,7 @@ class SelfAttention(nn.Module):
             A = self.softmax(A)
 
         # output
-        output = torch.matmul(A, V)
+        output = torch.matmul(self.score_dropout(A), V)
         output = self.residual_dropout(self.output_project(output))
 
         return output
@@ -89,12 +89,11 @@ class MultiHeadAttention(nn.Module):
     def forward(self, input_seq_embs: torch.Tensor, is_causal: bool=True) -> torch.Tensor:
         B, L, d = input_seq_embs.shape
 
-        Q = cast(torch.Tensor, self.W_Q(input_seq_embs)).reshape(B, L, self.heads, self.heads_dims)
-        K = cast(torch.Tensor, self.W_K(input_seq_embs)).reshape(B, L, self.heads, self.heads_dims)
-        V = cast(torch.Tensor, self.W_V(input_seq_embs)).reshape(B, L, self.heads, self.heads_dims)
+        Q = cast(torch.Tensor, self.W_Q(input_seq_embs)).reshape(B, self.heads, L, self.heads_dims)
+        K = cast(torch.Tensor, self.W_K(input_seq_embs)).reshape(B, self.heads, L, self.heads_dims)
+        V = cast(torch.Tensor, self.W_V(input_seq_embs)).reshape(B, self.heads, L, self.heads_dims)
 
         # A: score matrix
-        ## dropout
         A = torch.matmul(Q, K.transpose(-1, -2))
         if is_causal:
             mask = torch.log(torch.tril(torch.ones_like(A, dtype=torch.bool)))
@@ -105,8 +104,6 @@ class MultiHeadAttention(nn.Module):
 
         # output
         output = torch.matmul(self.score_dropout(A), V).reshape(B, L, d)
-        ## Linear
-        ## dropout
         output = self.residual_dropout(self.output_project(output))
 
         return output
