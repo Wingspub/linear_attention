@@ -305,7 +305,7 @@ wheels = [
 
 [[package]]
 name = "linear-attention"
-version = "0.0.4"
+version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "matplotlib" },

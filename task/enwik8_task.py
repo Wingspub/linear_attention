@@ -38,8 +38,8 @@ def enwik8_read(train_spilt_rate: float) -> Tuple[torch.Tensor, torch.Tensor, in
 
 # config
 train_vaild_spilt_rate = 0.9
-SEQ_LEN = 768
-GEN_LEN = 128
+SEQ_LEN = 64
+GEN_LEN = 64
 iter_num = 100000
 loss_print_num = 100
 eval_num = 1000
@@ -56,8 +56,8 @@ train_text, valid_text, token_num = enwik8_read(train_vaild_spilt_rate)
 
 train_dataset = Enwik8Dataset(train_text, seq_len=SEQ_LEN)
 valid_dataset = Enwik8Dataset(valid_text, seq_len=SEQ_LEN)
-train_dataloader = DataLoader(train_dataset, batch_size=8, num_workers=2)
-valid_dataset = DataLoader(valid_dataset, batch_size=8, num_workers=2)
+train_dataloader = DataLoader(train_dataset, batch_size=32, num_workers=2)
+valid_dataset = DataLoader(valid_dataset, batch_size=32, num_workers=2)
 
 # model
 # model = SimplestTransformer(Token_num=token_num, layers_num=5, dims=dims, device=device).to(device)
@@ -96,7 +96,6 @@ def generate(model: Module, src_seq: torch.Tensor, seq_len: int, device: torch.d
     response = torch.zeros((batch, seq_len), dtype=torch.int32).to(device)
     response[:, :src_len] = src_seq
 
-
     start = time()
     for i in range(src_len, seq_len):
         output_pred = model(response[:, :i])
@@ -132,20 +131,21 @@ writer = SummaryWriter("logs")
 
 temp_step = 0
 for data in train_dataloader:
-    if temp_step % eval_num == 0:
+    if (temp_step+1) % eval_num == 0:
         for valid_data in valid_dataset:
             valid_loss, gen_text = eval(model=model, seq_data=data, device=device)
             print(f"valid_loss:{valid_loss:.6f}")
             print(f"gen_text:\n{gen_text}")
             break
-        writer.add_scalar("Valid/loss", valid_loss, temp_step)
+        writer.add_scalar("Valid/loss", valid_loss, temp_step+1)
 
     loss = train(model=model, seq_data=data, device=device)
-    writer.add_scalar("Train/loss", loss, temp_step)
+    writer.add_scalar("Train/loss", loss, temp_step+1)
 
-    if temp_step % loss_print_num == 0: print(f"step:{temp_step+1}, loss:{loss:.6f}")
+    if temp_step % loss_print_num == 0: print(f"step:{temp_step}, loss:{loss:.6f}")
 
     temp_step += 1
     if temp_step >= iter_num:
         break
 
+writer.close()
