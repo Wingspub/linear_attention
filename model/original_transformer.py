@@ -157,8 +157,11 @@ class OriginalTransformer(nn.Module):
 
 
     def position_vector(self, seq_len: int) -> torch.Tensor:
-        position_index = torch.arange(1, 1+seq_len).unsqueeze(1)
-        dim_index = 10000 ** (torch.arange(1, 1+self.dims).unsqueeze(0)/self.dims)
+        position_index = torch.arange(seq_len).unsqueeze(1)
+        dim_index = torch.arange(self.dims)
+        dim_index[::2] = dim_index[::2] / 2
+        dim_index[1::2] = (dim_index[1::2] - 1) / 2
+        dim_index = 10000 ** (dim_index.unsqueeze(0)/self.dims)
         position_matrix = position_index/dim_index
 
         # 偶数为cos，奇数为sin
