@@ -61,6 +61,7 @@ def generate(model: nn.Module, data: torch.Tensor, mask_len: int, device: torch.
 
 @torch.inference_mode()
 def eval(model: nn.Module, valid_dataloader: DataLoader, device: torch.device, writer: SummaryWriter | None = None, temp_step: int = 0) ->Tuple[float, float]:
+    model.eval()
     for valid_data in valid_dataloader:
         X = valid_data[:, :-1].detach().clone().to(device)
         Y = valid_data[:, 1:].detach().clone().to(device)
@@ -87,6 +88,7 @@ writer = SummaryWriter("logs")
 
 # train
 temp_step = 0
+model.train()
 for _ in range(train_epoch_num):
     for image_data in train_dataloader:
         image_data: torch.Tensor

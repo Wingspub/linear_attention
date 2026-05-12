@@ -17,7 +17,8 @@
 
 参考材料
 - [Transformers are RNNs: Fast Autoregressive Transformers with Linear Attention](http://arxiv.org/abs/2006.16236)
-- [Image Transformer](http://arxiv.org/abs/1802.05751)
+- [Pixel Recurrent Neural Networks](http://arxiv.org/abs/1601.06759)
+- [PixelCNN++: Improving the PixelCNN with Discretized Logistic Mixture Likelihood and Other Modifications](http://arxiv.org/abs/1701.05517)
 
 ## 3 文本生成任务
 
@@ -27,3 +28,4 @@
 
 参考材料
 - [lucidrains/linear-attention-transformer](https://github.com/lucidrains/linear-attention-transformer)
+- [Linformer: Self-Attention with Linear Complexity](http://arxiv.org/abs/2006.04768)
