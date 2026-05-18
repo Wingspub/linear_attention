@@ -1,3 +1,6 @@
+# Attention Is All You Need
+# http://arxiv.org/abs/1706.03762
+
 from typing import cast
 from torch import nn
 import torch
