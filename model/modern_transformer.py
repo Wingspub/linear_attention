@@ -14,10 +14,31 @@
 # https://arxiv.org/abs/1710.05941
 
 
-from typing import cast, Any
+from typing import cast, Tuple
 
 from torch import nn
 import torch
+
+
+def precompute_rope_freqs(dim: int, max_seq_length: int = 32*1024, rope_base: float = 1e6) -> Tuple[torch.Tensor, torch.Tensor]:
+    freqs, atten_factor = 1.0/ (rope_base ** (torch.arange(0, dim, 2)[: dim // 2].float() / dim)), 1.0
+    t = torch.arange(max_seq_length, device=freqs.device)
+
+    # Length * dim
+    freqs = torch.outer(t, freqs).float()
+
+    freqs_cos = torch.cos(freqs.repeat(1, 2)) * atten_factor
+    freqs_sin = torch.sin(freqs.repeat(1, 2)) * atten_factor
+
+    return freqs_cos, freqs_sin
+
+
+def apply_rotary_pos_emb(q: torch.Tensor, k: torch.Tensor, cos_weight: torch.Tensor, sin_weight: torch.Tensor, unsqueeze_dim=1) -> Tuple[torch.Tensor, torch.Tensor]:
+    def rotate_half(x): return torch.cat((-x[..., x.shape[-1] // 2:], x[..., : x.shape[-1] // 2]), dim=-1)
+    q_embed = ((q * cos_weight.unsqueeze(unsqueeze_dim)) + (rotate_half(q) * sin_weight.unsqueeze(unsqueeze_dim))).to(q.dtype)
+    k_embed = ((k * cos_weight.unsqueeze(unsqueeze_dim)) + (rotate_half(k) * sin_weight.unsqueeze(unsqueeze_dim))).to(k.dtype)
+    return q_embed, k_embed
+
 
 class RMSNorm(nn.Module):
     def __init__(self, dims: int, eps: float = 1e-5) -> None:
@@ -60,6 +81,8 @@ class Attention(nn.Module):
         self.W_Q = nn.Linear(dims, dims, bias=False)
         self.W_K = nn.Linear(dims, dims, bias=False)
         self.W_V = nn.Linear(dims, dims, bias=False)
+        self.q_norm = RMSNorm(self.heads_dims)
+        self.k_norm = RMSNorm(self.heads_dims)
 
         self.score_dropout = nn.Dropout(p=0.1)
         self.residual_dropout = nn.Dropout(p=0.1)
@@ -68,12 +91,17 @@ class Attention(nn.Module):
         # output_tran
         self.output_project = nn.Linear(dims, dims)
 
-    def forward(self, input_seq_embs: torch.Tensor, is_causal: bool=False) -> torch.Tensor:
+    def forward(self, input_seq_embs: torch.Tensor, position_embeddings: Tuple[torch.Tensor, torch.Tensor], is_causal: bool=False) -> torch.Tensor:
         B, L, d = input_seq_embs.shape
 
-        Q = cast(torch.Tensor, self.W_Q(input_seq_embs)).reshape(B, self.heads, L, self.heads_dims)
-        K = cast(torch.Tensor, self.W_K(input_seq_embs)).reshape(B, self.heads, L, self.heads_dims)
-        V = cast(torch.Tensor, self.W_V(input_seq_embs)).reshape(B, self.heads, L, self.heads_dims)
+        Q = cast(torch.Tensor, self.W_Q(input_seq_embs)).reshape(B, L, self.heads, self.heads_dims)
+        K = cast(torch.Tensor, self.W_K(input_seq_embs)).reshape(B, L, self.heads, self.heads_dims)
+        V = cast(torch.Tensor, self.W_V(input_seq_embs)).reshape(B, L, self.heads, self.heads_dims)
+        Q, K = self.q_norm(Q), self.k_norm(K)
+
+        cos, sin = position_embeddings
+        Q, K = apply_rotary_pos_emb(Q, K, cos, sin, unsqueeze_dim=1)
+        Q, K, V = Q.transpose(1, 2), K.transpose(1, 2), V.transpose(1, 2)
 
         # A: score matrix
         A = torch.matmul(Q, K.transpose(-1, -2))
@@ -102,10 +130,10 @@ class AttentionBlock(nn.Module):
         self.LN2 = RMSNorm(dims)
 
 
-    def forward(self, input_seq_embs: torch.Tensor) -> torch.Tensor:
+    def forward(self, input_seq_embs: torch.Tensor, position_embeddings: Tuple[torch.Tensor, torch.Tensor]) -> torch.Tensor:
 
         # Attention
-        embs = self.attention(input_seq_embs, is_causal=True)
+        embs = self.attention(input_seq_embs, position_embeddings=position_embeddings, is_causal=True)
         embs = self.LN1(embs)
         input_seq_embs = input_seq_embs + embs
 
@@ -122,8 +150,12 @@ class ModernTransformer(nn.Module):
         super().__init__()
         self.block_num = block_num
         self.dims = dims
+        head_dims = dims // heads
 
         self.embeddings = nn.Embedding(token_num, dims)
+        freqs_cos, freqs_sin = precompute_rope_freqs(dim=head_dims)
+        self.freqs_cos = nn.Buffer(freqs_cos, persistent=False)
+        self.freqs_sin = nn.Buffer(freqs_sin, persistent=False)
 
         # TransformerBlock
         self.layer_block = nn.ModuleList()
@@ -134,32 +166,15 @@ class ModernTransformer(nn.Module):
         self.output_trans = nn.Linear(dims, token_num)
 
 
-    def position_vector(self, seq_len: int) -> torch.Tensor:
-        position_index = torch.arange(seq_len).unsqueeze(1)
-        dim_index = torch.arange(self.dims)
-        dim_index[::2] = dim_index[::2] / 2
-        dim_index[1::2] = (dim_index[1::2] - 1) / 2
-        dim_index = 10000 ** (dim_index.unsqueeze(0)/self.dims)
-        position_matrix = position_index/dim_index
-
-        # 偶数为cos，奇数为sin
-        position_matrix[:, ::2] = torch.sin(position_matrix[:, ::2])
-        position_matrix[:, 1::2] = torch.cos(position_matrix[:, 1::2])
-
-        return position_matrix
-
-
     def forward(self, input_seq: torch.Tensor) -> torch.Tensor:
         # 编码与位置编码
         L = input_seq.shape[1]
         embeddings = self.embeddings(input_seq)
-        position_embeddings = self.position_vector(L).to(embeddings.device)
-
-        embeddings = embeddings + position_embeddings
+        position_embeddings = (self.freqs_cos[:L], self.freqs_sin[:L])
 
         # layer
         for i in range(self.block_num):
-            embeddings = self.layer_block[i](embeddings)
+            embeddings = self.layer_block[i](embeddings, position_embeddings)
 
         # output
         output = self.output_trans(embeddings)

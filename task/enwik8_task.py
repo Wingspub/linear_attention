@@ -39,7 +39,7 @@ def enwik8_read(train_spilt_rate: float) -> Tuple[torch.Tensor, torch.Tensor, in
 
 # config
 train_vaild_spilt_rate = 0.9
-SEQ_LEN = 64
+SEQ_LEN = 256
 GEN_LEN = 64
 iter_num = 200000
 loss_print_num = 100
@@ -89,14 +89,17 @@ def train(model: Module, seq_data: torch.Tensor, device: torch.device) -> float:
 
 
 @torch.inference_mode()
-def generate(model: Module, src_seq: torch.Tensor, seq_len: int, device: torch.device) -> torch.Tensor:
+def generate(model: Module, src_seq: torch.Tensor, seq_len: int, device: torch.device) -> Tuple[torch.Tensor, torch.Tensor]:
     '''生成字符'''
     model.eval()
     batch, src_len = src_seq.shape
     assert src_len <= seq_len
 
+    gen_len = seq_len - src_len
+    sub_len = src_len - gen_len
+
     response = torch.zeros((batch, seq_len), dtype=torch.int32).to(device)
-    response[:, :src_len] = src_seq
+    response[:, :sub_len] = src_seq[:, :sub_len]
 
     start = time()
     for i in range(src_len, seq_len):
@@ -107,11 +110,11 @@ def generate(model: Module, src_seq: torch.Tensor, seq_len: int, device: torch.d
     end = time()
     rate = seq_len / (end-start)
     print(f"speed:{rate:.2f} tokens/s")
-    return response
+    return src_seq, response
 
 
 @torch.inference_mode()
-def eval(model: Module, seq_data: torch.Tensor, device: torch.device) -> Tuple[float, str]:
+def eval(model: Module, seq_data: torch.Tensor, device: torch.device) -> Tuple[float, str, str]:
     model.eval()
     # CE loss
     X = seq_data[:,:-1].detach().clone().to(device)
@@ -121,11 +124,11 @@ def eval(model: Module, seq_data: torch.Tensor, device: torch.device) -> Tuple[f
     loss = cast(torch.Tensor, loss_func(y_pred.reshape(-1, token_num), Y.reshape(-1)))
 
     # generate
-    gen_bytes = generate(model=model, src_seq=X, seq_len=SEQ_LEN+GEN_LEN, device=device)[0]
-    gen_bytes_text = bytes([c.item() for c in gen_bytes])
-    gen_text = tokenizer.decode(gen_bytes_text)
+    src_bytes, gen_bytes = generate(model=model, src_seq=X, seq_len=SEQ_LEN+GEN_LEN, device=device)
+    src_bytes_text, gen_bytes_text = bytes([c.item() for c in src_bytes[0]]), bytes([c.item() for c in gen_bytes[0]])
+    src_text, gen_text = tokenizer.decode(src_bytes_text), tokenizer.decode(gen_bytes_text)
 
-    return loss, gen_text
+    return loss.item(), src_text, gen_text
 
 
 # record
@@ -135,9 +138,10 @@ temp_step = 0
 for data in train_dataloader:
     if (temp_step+1) % eval_num == 0:
         for valid_data in valid_dataset:
-            valid_loss, gen_text = eval(model=model, seq_data=data, device=device)
+            valid_loss, src_text, gen_text = eval(model=model, seq_data=data, device=device)
             print(f"valid_loss:{valid_loss:.6f}")
-            print(f"gen_text:\n{gen_text}")
+            print(f"[src_text]:\n{src_text}")
+            print(f"[gen_text]:\n{gen_text}")
             break
         writer.add_scalar("Valid/loss", valid_loss, temp_step+1)
 
