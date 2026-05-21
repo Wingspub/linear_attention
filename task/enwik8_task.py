@@ -45,8 +45,7 @@ iter_num = 200000
 loss_print_num = 100
 eval_num = 1000
 
-# device = torch.device("cuda") if torch.cuda.is_available() else torch.device('cpu')
-device = torch.device('cpu')
+device = torch.device("cuda") if torch.cuda.is_available() else torch.device('cpu')
 
 ## model
 dims = 512
@@ -66,7 +65,7 @@ valid_dataset = DataLoader(valid_dataset, batch_size=4, num_workers=2)
 model = OriginalTransformer(token_num=token_num, block_num=6, dims=dims, heads=8).to(device)
 # model = ModernTransformer(token_num=token_num, block_num=6, dims=dims, heads=4).to(device)
 torch.set_float32_matmul_precision('high')
-# model = torch.compile(model)
+model = torch.compile(model)
 optimizer = optim.Adam(model.parameters(), lr=lr)
 loss_func = CrossEntropyLoss()
 
