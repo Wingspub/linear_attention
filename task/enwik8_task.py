@@ -39,8 +39,8 @@ def enwik8_read(train_spilt_rate: float) -> Tuple[torch.Tensor, torch.Tensor, in
 
 # config
 train_vaild_spilt_rate = 0.9
-SEQ_LEN = 512
-GEN_LEN = 64
+SEQ_LEN = 2048
+GEN_LEN = 128
 iter_num = 200000
 loss_print_num = 100
 eval_num = 1000
@@ -57,13 +57,13 @@ train_text, valid_text, token_num = enwik8_read(train_vaild_spilt_rate)
 
 train_dataset = Enwik8Dataset(train_text, seq_len=SEQ_LEN)
 valid_dataset = Enwik8Dataset(valid_text, seq_len=SEQ_LEN)
-train_dataloader = DataLoader(train_dataset, batch_size=8, num_workers=4)
+train_dataloader = DataLoader(train_dataset, batch_size=4, num_workers=2)
 valid_dataset = DataLoader(valid_dataset, batch_size=4, num_workers=2)
 
 # model
 # model = SimplestTransformer(Token_num=token_num, layers_num=5, dims=dims, device=device).to(device)
-model = OriginalTransformer(token_num=token_num, block_num=6, dims=dims, heads=8).to(device)
-# model = ModernTransformer(token_num=token_num, block_num=6, dims=dims, heads=4).to(device)
+# model = OriginalTransformer(token_num=token_num, block_num=6, dims=dims, heads=8).to(device)
+model = ModernTransformer(token_num=token_num, block_num=6, dims=dims, heads=4).to(device)
 torch.set_float32_matmul_precision('high')
 model = torch.compile(model)
 optimizer = optim.Adam(model.parameters(), lr=lr)
