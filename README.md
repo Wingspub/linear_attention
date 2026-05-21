@@ -14,6 +14,7 @@ uv sync
 ```bash
 uv run -m task.synthetic_copy_task # 人工合成任务
 uv run -m task.enwik8_task         # 文本拟合任务
+uv run -m task.image_gen_task      # 图像生成任务
 ```
 
 ## Reference
