@@ -12,5 +12,5 @@ class Enwik8Dataset(IterableDataset):
     def __iter__(self):
         while True:
             start_index = torch.randint(0, self.data_len-self.seq_len-1, (1,))
-            seq = self.data[start_index:start_index+self.seq_len]
+            seq = self.data[start_index: start_index + self.seq_len]
             yield seq

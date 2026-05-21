@@ -104,7 +104,7 @@ class Attention(nn.Module):
         Q, K, V = Q.transpose(1, 2), K.transpose(1, 2), V.transpose(1, 2)
 
         # A: score matrix
-        A = torch.matmul(Q, K.transpose(-1, -2))
+        A = torch.matmul(Q, K.transpose(-1, -2)) / (self.heads_dims)**0.5
         if is_causal:
             mask = torch.log(torch.tril(torch.ones_like(A, dtype=torch.bool)))
             A = self.softmax(A + mask)
@@ -113,7 +113,8 @@ class Attention(nn.Module):
             A = self.softmax(A)
 
         # output
-        output = torch.matmul(self.score_dropout(A), V).reshape(B, L, d)
+        output = torch.matmul(self.score_dropout(A), V)
+        output = output.transpose(1, 2).reshape(B, L, d)
         output = self.residual_dropout(self.output_project(output))
 
         return output
@@ -131,16 +132,15 @@ class AttentionBlock(nn.Module):
 
 
     def forward(self, input_seq_embs: torch.Tensor, position_embeddings: Tuple[torch.Tensor, torch.Tensor]) -> torch.Tensor:
-
         # Attention
-        embs = self.attention(input_seq_embs, position_embeddings=position_embeddings, is_causal=True)
-        embs = self.LN1(embs)
-        input_seq_embs = input_seq_embs + embs
+        normed = self.LN1(input_seq_embs)
+        embs = self.attention(normed, position_embeddings=position_embeddings, is_causal=True)
+        x = input_seq_embs + embs
 
         # FFN
-        embs = self.FFN(input_seq_embs)
-        embs = self.LN2(embs)
-        output_embs = input_seq_embs + embs
+        normed = self.LN2(x)
+        embs = self.FFN(normed)
+        output_embs = x + embs
 
         return output_embs
 
