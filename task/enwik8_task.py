@@ -1,13 +1,14 @@
-from typing import Tuple, cast
+from typing import Tuple, List, cast
 from torch.utils.data import DataLoader
-from torch.nn import Module, CrossEntropyLoss
+from torch.nn import CrossEntropyLoss
 from torch import optim, nn
 from time import time
 from dataset.enwik8_dataset import Enwik8Dataset
 from model.simplest_transformer import SimplestTransformer
 from model.original_transformer import OriginalTransformer
-from model.modern_transformer import ModernTransformer
+from model.morden_transformer import MordenTransformer
 import torch
+import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 print("this is a text fitting task")
@@ -15,31 +16,46 @@ print("this is a text fitting task")
 # Tool Class and Tool Function
 
 class Enwik8Tokenizer(object):
-    def __init__(self):
+    def __init__(self, text_data):
         pass
+        self.c2id = {}
+        self.id2c = {}
+        data_set = list(set(text_data))
+        for id, c in enumerate(data_set):
+            self.c2id[c] = id
+            self.id2c[id] = c
+        print(f"loding tokenizer is done. vocab num: {len(data_set)}")
 
-    def decode(self, text: bytes) -> str:
-        return text.decode('utf-8', errors="replace")
+    @property
+    def vocab_num(self) -> int:
+        return len(self.c2id.items())
+
+    def encode(self, text: np.ndarray) -> np.ndarray:
+        return np.array([self.c2id[c] for c in text])
 
 
-def enwik8_read(train_spilt_rate: float) -> Tuple[torch.Tensor, torch.Tensor, int]:
+    def decode(self, text: List[int]) -> str:
+        c_list = bytes([self.id2c[id] for id in text])
+        return c_list.decode('utf-8', errors="replace")
+
+
+def enwik8_read(train_spilt_rate: float) -> Tuple[torch.Tensor, torch.Tensor, Enwik8Tokenizer]:
     import gzip
-    import numpy as np
     assert train_spilt_rate > 0 and train_spilt_rate < 1.0
 
     f = gzip.open("./dataset/data/enwik8.gz", 'rb')
     bytes_text = np.frombuffer(f.read(), dtype=np.uint8)
-    token_num = max(np.unique(bytes_text)) + 1
-
+    tokenizer = Enwik8Tokenizer(text_data=bytes_text)
+    text = tokenizer.encode(bytes_text)
     train_spilt_index = int(len(bytes_text) * train_spilt_rate)
-    train_data = torch.from_numpy(bytes_text[:train_spilt_index].copy())
-    valid_data = torch.from_numpy(bytes_text[train_spilt_index:].copy())
+    train_data = torch.from_numpy(text[:train_spilt_index].copy())
+    valid_data = torch.from_numpy(text[train_spilt_index:].copy())
 
-    return train_data, valid_data, token_num
+    return train_data, valid_data, tokenizer
 
 # config
 train_vaild_spilt_rate = 0.9
-SEQ_LEN = 2048
+SEQ_LEN = 256
 GEN_LEN = 128
 iter_num = 200000
 loss_print_num = 100
@@ -52,8 +68,8 @@ dims = 512
 lr = 5e-4
 
 # init
-tokenizer = Enwik8Tokenizer()
-train_text, valid_text, token_num = enwik8_read(train_vaild_spilt_rate)
+train_text, valid_text, tokenizer = enwik8_read(train_vaild_spilt_rate)
+vocab_num = tokenizer.vocab_num
 
 train_dataset = Enwik8Dataset(train_text, seq_len=SEQ_LEN)
 valid_dataset = Enwik8Dataset(valid_text, seq_len=SEQ_LEN)
@@ -70,7 +86,7 @@ optimizer = optim.Adam(model.parameters(), lr=lr)
 loss_func = CrossEntropyLoss()
 
 
-def train(model: Module, seq_data: torch.Tensor, device: torch.device) -> float:
+def train(model, seq_data: torch.Tensor, device: torch.device) -> float:
     '''模型训练'''
     model.train()
     # source data and target data
@@ -100,7 +116,7 @@ def top_k(logits, thres = 0.9):
 
 @torch.inference_mode()
 def generate(
-    model: Module,
+    model,
     src_seq: torch.Tensor,
     seq_len: int,
     device: torch.device,
@@ -135,7 +151,7 @@ def generate(
 
 
 @torch.inference_mode()
-def eval(model: Module, seq_data: torch.Tensor, device: torch.device) -> Tuple[float, str, str]:
+def eval(model, seq_data: torch.Tensor, device: torch.device) -> Tuple[float, str, str]:
     model.eval()
     # CE loss
     seq_data = seq_data.to(device)
@@ -147,7 +163,7 @@ def eval(model: Module, seq_data: torch.Tensor, device: torch.device) -> Tuple[f
 
     # generate
     src_bytes, gen_bytes = generate(model=model, src_seq=seq_data, seq_len=SEQ_LEN+GEN_LEN, device=device)
-    src_bytes_text, gen_bytes_text = bytes([c.item() for c in src_bytes[0]]), bytes([c.item() for c in gen_bytes[0]])
+    src_bytes_text, gen_bytes_text = [c.item() for c in src_bytes[0]], [c.item() for c in gen_bytes[0]]
     src_text, gen_text = tokenizer.decode(src_bytes_text), tokenizer.decode(gen_bytes_text)
 
     return loss.item(), src_text, gen_text
