@@ -3,25 +3,24 @@ from torch import nn
 import torch
 
 class Base(nn.Module):
-    '''基础模型模板'''
-    def __init__(self, TOKEN_num: int, dims: int):
+    """基础模型模板"""
+    def __init__(self, vocab_size: int, embed_dims: int):
         super().__init__()
-        self.embeddings = nn.Embedding(TOKEN_num, dims)
-        self.Linear = nn.Linear(dims, TOKEN_num)
+        self.embeddings = nn.Embedding(vocab_size, embed_dims)
+        self.Linear = nn.Linear(embed_dims, vocab_size)
 
-
-    def forward(self, input_seq: torch.Tensor) -> torch.Tensor:
-        # input_seq -> (batch, seq)
-        # output -> (batch, seq, TOEKN_num)
-        embeddings = self.embeddings(input_seq)
+    def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
+        # input_ids -> (batch, seq_len)
+        # output -> (batch, seq, vocab_size)
+        embeddings = self.embeddings(input_ids)
         output = self.Linear(embeddings)
         return output
 
 
 class MLP(nn.Module):
-    def __init__(self, TOKEN_num: int, dims: int):
+    def __init__(self, vocab_size: int, dims: int):
         super().__init__()
-        self.embeddings = nn.Embedding(TOKEN_num, dims)
+        self.embeddings = nn.Embedding(vocab_size, dims)
         self.MLP = nn.Sequential(
             nn.Linear(dims, dims),
             nn.ReLU(),
@@ -29,29 +28,28 @@ class MLP(nn.Module):
             nn.ReLU(),
             nn.Linear(dims, dims),
             nn.ReLU(),
-            nn.Linear(dims, TOKEN_num)
+            nn.Linear(dims, vocab_size)
         )
 
-
-    def forward(self, input_seq: torch.Tensor) -> torch.Tensor:
-        # input_seq -> (batch, seq)
-        # output -> (batch, seq, TOEKN_num)
-        embeddings = self.embeddings(input_seq)
+    def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
+        # input_ids -> (batch, seq)
+        # output -> (batch, seq, vocab_size)
+        embeddings = self.embeddings(input_ids)
         out = self.MLP(embeddings)
         return out
 
 
 class SimpleParallelSequentialModel(nn.Module):
-    def __init__(self, TOKEN_num: int, dims: int):
+    def __init__(self, vocab_size: int, dims: int):
         super().__init__()
-        self.embeddings = nn.Embedding(TOKEN_num, dims)
+        self.embeddings = nn.Embedding(vocab_size, dims)
         self.W_V = nn.Linear(dims, dims, bias=False)
-        self.output_trans = nn.Linear(dims, TOKEN_num)
+        self.output_trans = nn.Linear(dims, vocab_size)
 
 
-    def forward(self, input_seq: torch.Tensor) -> torch.Tensor:
-        L = input_seq.shape[1]
-        embeddings = self.embeddings(input_seq)
+    def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
+        L = input_ids.shape[1]
+        embeddings = self.embeddings(input_ids)
         V = cast(torch.Tensor, self.W_V(embeddings))
 
         # casual matrix
@@ -62,28 +60,28 @@ class SimpleParallelSequentialModel(nn.Module):
 
 
 class SelfAttention(nn.Module):
-    def __init__(self, TOKEN_num: int, dims: int):
+    def __init__(self, vocab_size: int, dims: int):
         super().__init__()
-        self.embeddings = nn.Embedding(TOKEN_num, dims)
+        self.embeddings = nn.Embedding(vocab_size, dims)
         self.dims = dims
 
         self.W_Q = nn.Linear(dims, dims, bias=False)
         self.W_K = nn.Linear(dims, dims, bias=False)
-        self.WV = nn.Linear(dims, dims, bias=False)
+        self.W_V = nn.Linear(dims, dims, bias=False)
         self.softmax = nn.Softmax(dim=-1)
 
-        self.output_trans = nn.Linear(dims, TOKEN_num)
+        self.output_proj = nn.Linear(dims, vocab_size)
 
 
-    def forward(self, input_seq: torch.Tensor) -> torch.Tensor:
-        embeddings = self.embeddings(input_seq)
+    def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
+        embeddings = self.embeddings(input_ids)
         Q = self.W_Q(embeddings)
         K = self.W_K(embeddings)
         V = self.W_V(embeddings)
         # print(K.shape)
 
         A = torch.tril(self.softmax(torch.matmul(Q, K.transpose(-1, -2))/torch.sqrt(torch.tensor(self.dims).to(Q.device))))
-        output = self.output_trans(torch.matmul(A, V))
+        output = self.output_proj(torch.matmul(A, V))
 
         return output
 

@@ -5,7 +5,7 @@ from torch import optim
 from torch import nn
 from dataset.image_gen_dataset import MNISTSeqDataset
 from model.original_transformer import OriginalTransformer
-from model.modern_transformer import ModernTransformer
+from model.morden_transformer import MordenTransformer
 from torch.utils.tensorboard import SummaryWriter
 from torchmetrics import F1Score
 import torch
@@ -34,7 +34,7 @@ dims = 256
 lr = 1e-4
 
 # model = OriginalTransformer(token_num=token_num, block_num=6, dims=dims, heads=4).to(device)
-model = ModernTransformer(token_num=token_num, block_num=6, dims=dims, heads=4).to(device)
+model = MordenTransformer(token_num=token_num, block_num=6, dims=dims, heads=4).to(device)
 optimizer = optim.Adam(model.parameters(), lr=lr)
 loss_func = nn.CrossEntropyLoss()
 

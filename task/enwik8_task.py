@@ -61,9 +61,9 @@ train_dataloader = DataLoader(train_dataset, batch_size=4, num_workers=2)
 valid_dataset = DataLoader(valid_dataset, batch_size=4, num_workers=2)
 
 # model
-# model = SimplestTransformer(Token_num=token_num, layers_num=5, dims=dims, device=device).to(device)
-# model = OriginalTransformer(token_num=token_num, block_num=6, dims=dims, heads=8).to(device)
-model = ModernTransformer(token_num=token_num, block_num=6, dims=dims, heads=4).to(device)
+# model = SimplestTransformer(vocab_num=vocab_num, layers_num=5, dims=dims, device=device).to(device)
+# model = OriginalTransformer(vocab_num=vocab_num, block_num=6, dims=dims, heads=8).to(device)
+model = MordenTransformer(token_num=vocab_num, block_num=6, dims=dims, heads=4).to(device)
 torch.set_float32_matmul_precision('high')
 model = torch.compile(model)
 optimizer = optim.Adam(model.parameters(), lr=lr)
@@ -143,7 +143,7 @@ def eval(model: Module, seq_data: torch.Tensor, device: torch.device) -> Tuple[f
     Y = seq_data[:, 1:]
 
     y_pred = cast(torch.Tensor, model(X))
-    loss = cast(torch.Tensor, loss_func(y_pred.reshape(-1, token_num), Y.reshape(-1)))
+    loss = cast(torch.Tensor, loss_func(y_pred.reshape(-1, vocab_num), Y.reshape(-1)))
 
     # generate
     src_bytes, gen_bytes = generate(model=model, src_seq=seq_data, seq_len=SEQ_LEN+GEN_LEN, device=device)

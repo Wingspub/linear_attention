@@ -144,12 +144,12 @@ class TransformerBlock(nn.Module):
 
 
 class OriginalTransformer(nn.Module):
-    def __init__(self, token_num: int, block_num: int, dims: int, heads: int=8):
+    def __init__(self, vocab_num: int, block_num: int, dims: int, heads: int=8):
         super().__init__()
         self.block_num = block_num
         self.dims = dims
 
-        self.embeddings = nn.Embedding(token_num, dims)
+        self.embeddings = nn.Embedding(vocab_num, dims)
 
         # TransformerBlock
         self.layer_block = nn.ModuleList()
@@ -157,7 +157,7 @@ class OriginalTransformer(nn.Module):
             transformerBlock = TransformerBlock(dims=dims, heads=heads)
             self.layer_block.append(transformerBlock)
 
-        self.output_trans = nn.Linear(dims, token_num)
+        self.output_trans = nn.Linear(dims, vocab_num)
 
 
     def position_vector(self, seq_len: int) -> torch.Tensor:
@@ -175,10 +175,10 @@ class OriginalTransformer(nn.Module):
         return position_matrix
 
 
-    def forward(self, input_seq: torch.Tensor) -> torch.Tensor:
+    def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
         # 编码与位置编码
-        L = input_seq.shape[1]
-        embeddings = self.embeddings(input_seq)
+        L = input_ids.shape[1]
+        embeddings = self.embeddings(input_ids)
         position_embeddings = self.position_vector(L).to(embeddings.device)
 
         embeddings = embeddings + position_embeddings

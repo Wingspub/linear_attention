@@ -145,7 +145,7 @@ class AttentionBlock(nn.Module):
         return output_embs
 
 
-class ModernTransformer(nn.Module):
+class MordenTransformer(nn.Module):
     def __init__(self, token_num: int, block_num: int, dims: int, heads: int=8):
         super().__init__()
         self.block_num = block_num
