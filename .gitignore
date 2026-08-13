@@ -209,5 +209,4 @@ __marimo__/
 .ipynb
 logs/
 
-enwik8.gz
-MNIST
+data/

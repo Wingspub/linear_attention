@@ -65,7 +65,7 @@ device = torch.device("cuda") if torch.cuda.is_available() else torch.device('cp
 
 ## model
 dims = 512
-lr = 5e-4
+lr = 5e-5
 
 # init
 train_text, valid_text, tokenizer = enwik8_read(train_vaild_spilt_rate)
@@ -77,11 +77,11 @@ train_dataloader = DataLoader(train_dataset, batch_size=4, num_workers=2)
 valid_dataset = DataLoader(valid_dataset, batch_size=4, num_workers=2)
 
 # model
-# model = SimplestTransformer(vocab_num=vocab_num, layers_num=5, dims=dims, device=device).to(device)
-# model = OriginalTransformer(vocab_num=vocab_num, block_num=6, dims=dims, heads=8).to(device)
-model = MordenTransformer(token_num=vocab_num, block_num=6, dims=dims, heads=4).to(device)
+model = SimplestTransformer(vocab_num=vocab_num, layers_num=6, dims=dims).to(device)
+# model = OriginalTransformer(vocab_num=vocab_num, block_num=6, dims=dims, heads=4).to(device)
+# model = MordenTransformer(token_num=vocab_num, block_num=6, dims=dims, heads=4).to(device)
 torch.set_float32_matmul_precision('high')
-model = torch.compile(model)
+# model = torch.compile(model)
 optimizer = optim.Adam(model.parameters(), lr=lr)
 loss_func = CrossEntropyLoss()
 
@@ -175,13 +175,20 @@ writer = SummaryWriter("logs")
 temp_step = 0
 for data in train_dataloader:
     if (temp_step+1) % eval_num == 0:
+        loss = []
+        flag = True
         for valid_data in valid_dataset:
             valid_loss, src_text, gen_text = eval(model=model, seq_data=valid_data, device=device)
-            print(f"valid_loss:{valid_loss:.6f}")
-            print(f"[src_text]:\n{src_text}")
-            print(f"[gen_text]:\n{gen_text}")
-            break
-        writer.add_scalar("Valid/loss", valid_loss, temp_step+1)
+            loss.append(valid_loss)
+            if flag:
+                print(f"[src_text]:\n{src_text}")
+                print(f"[gen_text]:\n{gen_text}")
+                flag = False
+            else:
+                continue
+        valid_mean = np.mean(valid_loss)
+        print(f"valid_loss:{valid_mean:.6f}")
+        writer.add_scalar("Valid/loss", valid_mean, temp_step+1)
 
     loss = train(model=model, seq_data=data, device=device)
     writer.add_scalar("Train/loss", loss, temp_step+1)
