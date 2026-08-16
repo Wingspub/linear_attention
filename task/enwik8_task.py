@@ -4,7 +4,6 @@ from torch.nn import CrossEntropyLoss
 from torch import optim, nn
 from time import time
 from dataset.enwik8_dataset import Enwik8Dataset
-from model.simplest_transformer import SimplestTransformer
 from model.original_transformer import OriginalTransformer
 from model.morden_transformer import MordenTransformer
 import torch
